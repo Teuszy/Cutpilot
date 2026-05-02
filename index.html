@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#030712">
+<title>CutPilot</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+--bg:#030712;--card:#111827;--card2:#1f2937;--border:#374151;
+--text:#f9fafb;--dim:#9ca3af;--accent:#22d3ee;--green:#34d399;
+--red:#f87171;--orange:#fbbf24;--blue:#60a5fa;
+--safe-top:env(safe-area-inset-top);
+--safe-bot:env(safe-area-inset-bottom);
+}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"SF Pro",sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+body{display:flex;flex-direction:column}
+
+/* ── TOP BAR ── */
+.topbar{
+padding:calc(var(--safe-top) + 8px) 16px 8px;
+background:var(--card);border-bottom:1px solid var(--border);
+display:flex;align-items:center;justify-content:space-between;
+}
+.topbar h1{font-size:18px;font-weight:700;color:var(--accent)}
+.topbar .date{font-size:12px;color:var(--dim)}
+
+/* ── SCROLLABLE CONTENT ── */
+.content{
+flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+padding:12px 14px calc(var(--safe-bot) + 70px);
+}
+
+/* ── CARDS ── */
+.card{
+background:var(--card);border:1px solid var(--border);
+border-radius:18px;padding:14px;margin-bottom:12px;
+}
+.card h2{font-size:14px;color:var(--dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+
+/* ── MACRO RINGS ── */
+.rings{display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px}
+.ring-item{text-align:center;width:70px}
+.ring-label{font-size:11px;color:var(--dim);margin-top:4px}
+.ring-value{font-size:13px;font-weight:700}
+svg.ring{width:62px;height:62px;transform:rotate(-90deg)}
+svg.ring circle{fill:none;stroke-width:5;stroke-linecap:round}
+svg.ring .bg{stroke:var(--card2)}
+
+/* ── FEEDBACK ── */
+.feedback{
+background:var(--card2);border-left:3px solid var(--accent);
+border-radius:10px;padding:10px 12px;margin-bottom:8px;
+font-size:13px;line-height:1.5;color:var(--text);
+}
+.feedback.warn{border-left-color:var(--orange)}
+.feedback.bad{border-left-color:var(--red)}
+.feedback.good{border-left-color:var(--green)}
+
+/* ── WEIGHT CHART ── */
+.chart-area{position:relative;height:120px;background:var(--card2);border-radius:12px;overflow:hidden;margin-top:8px}
+canvas{width:100%!important;height:100%!important}
+
+/* ── FOOD LOG ── */
+.food-item{
+display:flex;justify-content:space-between;align-items:center;
+padding:10px 0;border-bottom:1px solid var(--border);
+font-size:14px;
+}
+.food-item:last-child{border:none}
+.food-name{flex:1}
+.food-cals{color:var(--accent);font-weight:600;margin-left:8px}
+.food-pro{color:var(--green);font-size:12px;margin-left:6px}
+
+/* ── INPUTS ── */
+.input-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.input-row input,.input-row select{
+flex:1;min-width:0;padding:10px;font-size:14px;
+background:var(--card2);color:var(--text);border:1px solid var(--border);
+border-radius:12px;outline:none;
+}
+.input-row input:focus{border-color:var(--accent)}
+
+/* ── BUTTONS ── */
+.btn{
+width:100%;padding:12px;border:none;border-radius:14px;
+font-size:15px;font-weight:700;color:var(--bg);
+background:var(--accent);cursor:pointer;
+}
+.btn:active{opacity:.85;transform:scale(.98)}
+.btn-small{
+padding:8px 14px;width:auto;font-size:13px;border-radius:10px;
+background:var(--card2);color:var(--accent);border:1px solid var(--border);
+}
+.btn-danger{background:var(--red);color:white}
+
+/* ── TABS ── */
+.tabs{
+position:fixed;bottom:0;left:0;right:0;
+background:var(--card);border-top:1px solid var(--border);
+display:flex;
+padding:6px 0 calc(var(--safe-bot) + 6px);
+z-index:100;
+}
+.tab{
+flex:1;text-align:center;padding:6px 0;font-size:11px;
+color:var(--dim);cursor:pointer;
+}
+.tab.active{color:var(--accent)}
+.tab-icon{font-size:20px;display:block;margin-bottom:2px}
+
+/* ── PAGES ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── MODAL ── */
+.modal-bg{
+position:fixed;inset:0;background:rgba(0,0,0,.7);
+display:none;z-index:200;align-items:end;justify-content:center;
+}
+.modal-bg.show{display:flex}
+.modal{
+width:100%;max-width:500px;background:var(--card);
+border-radius:22px 22px 0 0;
+padding:20px 16px calc(var(--safe-bot) + 20px);
+}
+.modal h3{font-size:16px;margin-bottom:14px}
+
+/* ── SETUP SCREEN ── */
+.setup-screen{
+position:fixed;inset:0;background:var(--bg);z-index:300;
+display:flex;flex-direction:column;align-items:center;justify-content:center;
+padding:24px;
+}
+.setup-screen.hide{display:none}
+.setup-screen h1{font-size:28px;color:var(--accent);margin-bottom:6px}
+.setup-screen p{color:var(--dim);margin-bottom:24px;text-align:center;font-size:14px}
+.setup-screen .input-row{width:100%;max-width:360px}
+.setup-screen label{font-size:13px;color:var(--dim);display:block;margin-bottom:4px;margin-top:10px}
+.setup-screen input{
+width:100%;padding:12px;font-size:16px;
+background:var(--card);color:var(--text);border:1px solid var(--border);
+border-radius:14px;outline:none;
+}
+.setup-screen input:focus{border-color:var(--accent)}
+.setup-screen .btn{max-width:360px;margin-top:20px}
+</style>
+</head>
+<body>
+
+<!-- ════════════ SETUP SCREEN ════════════ -->
+<div class="setup-screen" id="setupScreen">
+<h1>CutPilot</h1>
+<p>Your blunt, no-BS weight loss copilot.<br>Let's set your targets.</p>
+
+<label>Current weight (kg)</label>
+<input type="number" id="setupWeight" placeholder="e.g. 90" inputmode="decimal">
+
+<label>Goal weight (kg)</label>
+<input type="number" id="setupGoal" placeholder="e.g. 78" inputmode="decimal">
+
+<label>Daily calorie target</label>
+<input type="number" id="setupCals" placeholder="e.g. 1800" inputmode="numeric">
+
+<label>Daily protein target (g)</label>
+<input type="number" id="setupProtein" placeholder="e.g. 150" inputmode="numeric">
+
+<label>Daily saturated fat limit (g)</label>
+<input type="number" id="setupSatFat" placeholder="e.g. 20" inputmode="numeric">
+
+<label>Daily salt limit (mg)</label>
+<input type="number" id="setupSalt" placeholder="e.g. 2300" inputmode="numeric">
+
+<button class="btn" onclick="saveSetup()">Start CutPilot</button>
+</div>
+
+<!-- ════════════ TOP BAR ════════════ -->
+<div class="topbar">
+<h1>CutPilot</h1>
+<div class="date" id="todayDate"></div>
+</div>
+
+<!-- ════════════ SCROLLABLE CONTENT ════════════ -->
+<div class="content">
+
+<!-- ── PAGE: DASHBOARD ── -->
+<div class="page active" id="pageDash">
+
+<div class="card">
+<h2>Today's Macros</h2>
+<div class="rings" id="rings"></div>
+</div>
+
+<div class="card">
+<h2>CutPilot Says</h2>
+<div id="feedbackBox"></div>
+</div>
+
+<div class="card">
+<h2>Weight Trend (7 day)</h2>
+<div class="chart-area"><canvas id="weightChart"></canvas></div>
+</div>
+
+<div class="card">
+<h2>Goal Progress</h2>
+<div id="goalProgress"></div>
+</div>
+
+</div>
+
+<!-- ── PAGE: FOOD LOG ── -->
+<div class="page" id="pageFood">
+
+<div class="card">
+<h2>Add Food</h2>
+<div class="input-row"><input id="foodName" placeholder="Food name"></div>
+<div class="input-row">
+<input id="foodCals" type="number" placeholder="Calories" inputmode="numeric">
+<input id="foodProtein" type="number" placeholder="Protein g" inputmode="numeric">
+</div>
+<div class="input-row">
+<input id="foodSatFat" type="number" placeholder="Sat fat g" inputmode="numeric">
+<input id="foodSalt" type="number" placeholder="Salt mg" inputmode="numeric">
+</div>
+<button class="btn" onclick="addFood()">+ Add to Log</button>
+</div>
+
+<div class="card">
+<h2>Today's Food</h2>
+<div id="foodList"></div>
+</div>
+
+</div>
+
+<!-- ── PAGE: EXERCISE ── -->
+<div class="page" id="pageExercise">
+
+<div class="card">
+<h2>Log Exercise</h2>
+<div class="input-row"><input id="exName" placeholder="Exercise name"></div>
+<div class="input-row"><input id="exCals" type="number" placeholder="Calories burned" inputmode="numeric"></div>
+<button class="btn" onclick="addExercise()">+ Add Exercise</button>
+</div>
+
+<div class="card">
+<h2>Today's Exercise</h2>
+<div id="exList"></div>
+</div>
+
+</div>
+
+<!-- ── PAGE: WEIGHT ── -->
+<div class="page" id="pageWeight">
+
+<div class="card">
+<h2>Log Today's Weight</h2>
+<div class="input-row"><input id="weightInput" type="number" placeholder="Weight in kg" inputmode="decimal"></div>
+<button class="btn" onclick="addWeight()">Save Weight</button>
+</div>
+
+<div class="card">
+<h2>Weight History</h2>
+<div id="weightHistory"></div>
+</div>
+
+</div>
+
+<!-- ── PAGE: SETTINGS ── -->
+<div class="page" id="pageSettings">
+
+<div class="card">
+<h2>Your Targets</h2>
+<div class="input-row"><input id="setCals" type="number" placeholder="Calorie target" inputmode="numeric"></div>
+<div class="input-row"><input id="setProtein" type="number" placeholder="Protein target g" inputmode="numeric"></div>
+<div class="input-row"><input id="setSatFat" type="number" placeholder="Sat fat limit g" inputmode="numeric"></div>
+<div class="input-row"><input id="setSalt" type="number" placeholder="Salt limit mg" inputmode="numeric"></div>
+<div class="input-row"><input id="setGoal" type="number" placeholder="Goal weight kg" inputmode="decimal"></div>
+<button class="btn" onclick="saveSettings()">Save Targets</button>
+</div>
+
+<div class="card">
+<h2>Danger Zone</h2>
+<button class="btn btn-danger" onclick="resetAll()">Reset All Data</button>
+</div>
+
+</div>
+
+</div>
+
+<!-- ════════════ TAB BAR ════════════ -->
+<div class="tabs">
+<div class="tab active" onclick="switchTab('pageDash',this)"><span class="tab-icon">📊</span>Dashboard</div>
+<div class="tab" onclick="switchTab('pageFood',this)"><span class="tab-icon">🍽</span>Food</div>
+<div class="tab" onclick="switchTab('pageExercise',this)"><span class="tab-icon">🏋️</span>Exercise</div>
+<div class="tab" onclick="switchTab('pageWeight',this)"><span class="tab-icon">⚖️</span>Weight</div>
+<div class="tab" onclick="switchTab('pageSettings',this)"><span class="tab-icon">⚙️</span>Settings</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════
+   DATA LAYER — localStorage
+   ═══════════════════════════════════════ */
+const TODAY = new Date().toISOString().slice(0,10);
+
+function load(key,fallback){try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback}catch{return fallback}}
+function save(key,val){localStorage.setItem(key,JSON.stringify(val))}
+
+function getTargets(){return load('cp_targets',{cals:1800,protein:150,satfat:20,salt:2300,goal:78})}
+function getFoodLog(){return load('cp_food_'+TODAY,[])}
+function getExLog(){return load('cp_ex_'+TODAY,[])}
+function getWeights(){return load('cp_weights',[])}
+
+/* ═══════════════════════════════════════
+   SETUP
+   ═══════════════════════════════════════ */
+function checkSetup(){
+  if(!localStorage.getItem('cp_targets')){
+    document.getElementById('setupScreen').classList.remove('hide');
+  } else {
+    document.getElementById('setupScreen').classList.add('hide');
+  }
+}
+
+function saveSetup(){
+  const w=parseFloat(document.getElementById('setupWeight').value);
+  const g=parseFloat(document.getElementById('setupGoal').value);
+  const c=parseInt(document.getElementById('setupCals').value);
+  const p=parseInt(document.getElementById('setupProtein').value);
+  const sf=parseInt(document.getElementById('setupSatFat').value);
+  const sl=parseInt(document.getElementById('setupSalt').value);
+  if(!w||!g||!c||!p){alert('Please fill in at least weight, goal, calories, and protein.');return}
+  save('cp_targets',{cals:c,protein:p,satfat:sf||20,salt:sl||2300,goal:g});
+  // save initial weight
+  const weights=getWeights();
+  if(!weights.find(e=>e.date===TODAY)){weights.push({date:TODAY,kg:w});save('cp_weights',weights)}
+  document.getElementById('setupScreen').classList.add('hide');
+  refreshAll();
+}
+
+/* ═══════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════ */
+function switchTab(pageId,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  if(pageId==='pageDash')refreshDashboard();
+}
+
+/* ═══════════════════════════════════════
+   FOOD
+   ═══════════════════════════════════════ */
+function addFood(){
+  const name=document.getElementById('foodName').value.trim();
+  const cals=parseInt(document.getElementById('foodCals').value)||0;
+  const protein=parseInt(document.getElementById('foodProtein').value)||0;
+  const satfat=parseInt(document.getElementById('foodSatFat').value)||0;
+  const salt=parseInt(document.getElementById('foodSalt').value)||0;
+  if(!name||!cals){alert('Enter at least a name and calories.');return}
+  const log=getFoodLog();
+  log.push({name,cals,protein,satfat,salt,time:Date.now()});
+  save('cp_food_'+TODAY,log);
+  document.getElementById('foodName').value='';
+  document.getElementById('foodCals').value='';
+  document.getElementById('foodProtein').value='';
+  document.getElementById('foodSatFat').value='';
+  document.getElementById('foodSalt').value='';
+  renderFoodList();
+  refreshDashboard();
+}
+
+function deleteFood(i){
+  const log=getFoodLog();log.splice(i,1);save('cp_food_'+TODAY,log);renderFoodList();refreshDashboard();
+}
+
+function renderFoodList(){
+  const log=getFoodLog();const el=document.getElementById('foodList');
+  if(!log.length){el.innerHTML='<p style="color:var(--dim);font-size:13px">No food logged yet today.</p>';return}
+  el.innerHTML=log.map((f,i)=>`
+    <div class="food-item">
+      <span class="food-name">${f.name}</span>
+      <span class="food-cals">${f.cals} cal</span>
+      <span class="food-pro">${f.protein}g P</span>
+      <button class="btn-small" onclick="deleteFood(${i})" style="margin-left:6px;color:var(--red);border-color:var(--red)">✕</button>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════
+   EXERCISE
+   ═══════════════════════════════════════ */
+function addExercise(){
+  const name=document.getElementById('exName').value.trim();
+  const cals=parseInt(document.getElementById('exCals').value)||0;
+  if(!name||!cals){alert('Enter exercise name and calories burned.');return}
+  const log=getExLog();
+  log.push({name,cals,time:Date.now()});
+  save('cp_ex_'+TODAY,log);
+  document.getElementById('exName').value='';
+  document.getElementById('exCals').value='';
+  renderExList();
+  refreshDashboard();
+}
+
+function deleteEx(i){
+  const log=getExLog();log.splice(i,1);save('cp_ex_'+TODAY,log);renderExList();refreshDashboard();
+}
+
+function renderExList(){
+  const log=getExLog();const el=document.getElementById('exList');
+  if(!log.length){el.innerHTML='<p style="color:var(--dim);font-size:13px">No exercise logged today.</p>';return}
+  el.innerHTML=log.map((e,i)=>`
+    <div class="food-item">
+      <span class="food-name">${e.name}</span>
+      <span class="food-cals" style="color:var(--green)">-${e.cals} cal</span>
+      <button class="btn-small" onclick="deleteEx(${i})" style="margin-left:6px;color:var(--red);border-color:var(--red)">✕</button>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════
+   WEIGHT
+   ═══════════════════════════════════════ */
+function addWeight(){
+  const kg=parseFloat(document.getElementById('weightInput').value);
+  if(!kg){alert('Enter your weight.');return}
+  const weights=getWeights();
+  const idx=weights.findIndex(w=>w.date===TODAY);
+  if(idx>=0)weights[idx].kg=kg;else weights.push({date:TODAY,kg});
+  save('cp_weights',weights);
+  document.getElementById('weightInput').value='';
+  renderWeightHistory();
+  refreshDashboard();
+}
+
+function renderWeightHistory(){
+  const weights=getWeights().slice(-14).reverse();
+  const el=document.getElementById('weightHistory');
+  if(!weights.length){el.innerHTML='<p style="color:var(--dim);font-size:13px">No weight data yet.</p>';return}
+  el.innerHTML=weights.map(w=>`
+    <div class="food-item">
+      <span class="food-name">${w.date}</span>
+      <span class="food-cals">${w.kg} kg</span>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════
+   SETTINGS
+   ═══════════════════════════════════════ */
+function saveSettings(){
+  const t=getTargets();
+  const c=parseInt(document.getElementById('setCals').value);
+  const p=parseInt(document.getElementById('setProtein').value);
+  const sf=parseInt(document.getElementById('setSatFat').value);
+  const sl=parseInt(document.getElementById('setSalt').value);
+  const g=parseFloat(document.getElementById('setGoal').value);
+  if(c)t.cals=c;if(p)t.protein=p;if(sf)t.satfat=sf;if(sl)t.salt=sl;if(g)t.goal=g;
+  save('cp_targets',t);
+  alert('Targets saved!');
+  loadSettingsValues();
+  refreshDashboard();
+}
+
+function loadSettingsValues(){
+  const t=getTargets();
+  document.getElementById('setCals').value=t.cals;
+  document.getElementById('setProtein').value=t.protein;
+  document.getElementById('setSatFat').value=t.satfat;
+  document.getElementById('setSalt').value=t.salt;
+  document.getElementById('setGoal').value=t.goal;
+}
+
+function resetAll(){
+  if(confirm('This will delete ALL your data. Are you sure?')){
+    localStorage.clear();location.reload();
+  }
+}
+
+/* ═══════════════════════════════════════
+   DASHBOARD
+   ═══════════════════════════════════════ */
+function getTotals(){
+  const food=getFoodLog();
+  const ex=getExLog();
+  const cals=food.reduce((s,f)=>s+f.cals,0);
+  const protein=food.reduce((s,f)=>s+f.protein,0);
+  const satfat=food.reduce((s,f)=>s+f.satfat,0);
+  const salt=food.reduce((s,f)=>s+f.salt,0);
+  const exCals=ex.reduce((s,e)=>s+e.cals,0);
+  return{cals,protein,satfat,salt,exCals,net:cals-exCals};
+}
+
+function makeRingSVG(pct,color){
+  const r=26;const c=2*Math.PI*r;const dash=Math.min(pct,1)*c;
+  return `<svg class="ring" viewBox="0 0 62 62">
+    <circle class="bg" cx="31" cy="31" r="${r}" />
+    <circle cx="31" cy="31" r="${r}" stroke="${color}" stroke-dasharray="${dash} ${c}" />
+  </svg>`;
+}
+
+function refreshDashboard(){
+  const t=getTargets();
+  const totals=getTotals();
+
+  // Rings
+  const rings=[
+    {label:'Net Cal',val:totals.net,max:t.cals,color:'var(--accent)'},
+    {label:'Protein',val:totals.protein,max:t.protein,color:'var(--green)'},
+    {label:'Sat Fat',val:totals.satfat,max:t.satfat,color:'var(--orange)'},
+    {label:'Salt',val:totals.salt,max:t.salt,color:'var(--red)'},
+    {label:'Exercise',val:totals.exCals,max:500,color:'var(--blue)'},
+  ];
+
+  document.getElementById('rings').innerHTML=rings.map(r=>{
+    const pct=r.max?r.val/r.max:0;
+    return `<div class="ring-item">
+      ${makeRingSVG(pct,r.color)}
+      <div class="ring-value" style="color:${r.color}">${r.val}</div>
+      <div class="ring-label">${r.label}<br>${r.val}/${r.max}</div>
+    </div>`;
+  }).join('');
+
+  // Feedback
+  generateFeedback(t,totals);
+
+  // Weight chart
+  drawWeightChart();
+
+  // Goal progress
+  renderGoalProgress(t);
+}
+
+/* ═══════════════════════════════════════
+   BLUNT FEEDBACK ENGINE
+   ═══════════════════════════════════════ */
+function generateFeedback(t,totals){
+  const fb=[];
+  const calPct=totals.net/t.cals;
+  const proPct=totals.protein/t.protein;
+  const remaining=t.cals-totals.net;
+  const hour=new Date().getHours();
+
+  // Calories
+  if(calPct>1.1){
+    fb.push({c:'bad',m:`You're ${totals.net - t.cals} calories over your target. The deficit is gone for today. Don't spiral — just stop here and start clean tomorrow.`});
+  } else if(calPct>0.95){
+    fb.push({c:'warn',m:`You're at ${Math.round(calPct*100)}% of your calorie budget. You have ${remaining} calories left. Be very precise with anything else you eat.`});
+  } else if(calPct>0.7 && hour<14){
+    fb.push({c:'warn',m:`You've already used ${Math.round(calPct*100)}% of your calories and it's not even 2pm. You'll need to go light for the rest of the day.`});
+  } else if(calPct<0.3 && hour>18){
+    fb.push({c:'good',m:`You've only used ${Math.round(calPct*100)}% of your budget and it's evening. You have plenty of room for a proper dinner.`});
+  } else if(remaining>0){
+    fb.push({c:'good',m:`${remaining} calories remaining. You're in good shape.`});
+  }
+
+  // Protein
+  if(proPct>=0.9){
+    fb.push({c:'good',m:`Protein is at ${totals.protein}g — strong enough to protect muscle during the cut.`});
+  } else if(proPct>=0.6){
+    fb.push({c:'warn',m:`Protein is at ${totals.protein}g out of ${t.protein}g. You need ${t.protein-totals.protein}g more. Prioritise protein in your next meal.`});
+  } else if(totals.cals>0){
+    fb.push({c:'bad',m:`Protein is only ${totals.protein}g. That's too low. You're more likely to lose muscle at this rate. Eat something high-protein now.`});
+  }
+
+  // Salt
+  if(totals.salt>t.salt){
+    fb.push({c:'bad',m:`Salt is at ${totals.salt}mg — over your ${t.salt}mg limit. Expect water retention and a higher scale reading tomorrow. It's not fat.`});
+  } else if(totals.salt>t.salt*0.8){
+    fb.push({c:'warn',m:`Salt is at ${totals.salt}mg. Getting close to your limit. Watch out for hidden sodium in sauces and processed food.`});
+  }
+
+  // Saturated fat
+  if(totals.satfat>t.satfat){
+    fb.push({c:'bad',m:`Saturated fat is ${totals.satfat}g — over your ${t.satfat}g limit. Try to keep it lower tomorrow.`});
+  }
+
+  // Exercise
+  if(totals.exCals>0){
+    fb.push({c:'good',m:`You burned ${totals.exCals} calories through exercise. Your net intake is ${totals.net} calories.`});
+  }
+
+  // Weight trend
+  const weights=getWeights();
+  if(weights.length>=7){
+    const last7=weights.slice(-7);
+    const avg7=last7.reduce((s,w)=>s+w.kg,0)/7;
+    const prev7=weights.length>=14?weights.slice(-14,-7):null;
+    if(prev7){
+      const avgPrev=prev7.reduce((s,w)=>s+w.kg,0)/prev7.length;
+      const diff=avg7-avgPrev;
+      if(diff<-0.3){
+        fb.push({c:'good',m:`Your 7-day weight average dropped by ${Math.abs(diff).toFixed(1)}kg. You're making real progress.`});
+      } else if(diff>0.3){
+        fb.push({c:'bad',m:`Your 7-day average went UP by ${diff.toFixed(1)}kg. Your actual calorie deficit may be smaller than you think. Be more honest with logging.`});
+      } else {
+        fb.push({c:'warn',m:`Your 7-day weight trend is flat (±${Math.abs(diff).toFixed(1)}kg). Your deficit may be smaller than expected. Consider cutting 100-200 more calories.`});
+      }
+    }
+  } else if(weights.length>0 && weights.length<7){
+    fb.push({c:'warn',m:`Keep weighing daily. I need at least 7 days of data to spot real trends (not just water fluctuations).`});
+  }
+
+  if(!fb.length){
+    fb.push({c:'good',m:`Start logging food to get feedback.`});
+  }
+
+  document.getElementById('feedbackBox').innerHTML=fb.map(f=>`<div class="feedback ${f.c}">${f.m}</div>`).join('');
+}
+
+/* ═══════════════════════════════════════
+   WEIGHT CHART (simple canvas)
+   ═══════════════════════════════════════ */
+function drawWeightChart(){
+  const canvas=document.getElementById('weightChart');
+  const ctx=canvas.getContext('2d');
+  const rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width*2;canvas.height=rect.height*2;
+  ctx.scale(2,2);
+  const W=rect.width;const H=rect.height;
+
+  const weights=getWeights().slice(-14);
+  if(weights.length<2){
+    ctx.fillStyle='#9ca3af';ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Need at least 2 weight entries',W/2,H/2);return;
+  }
+
+  const vals=weights.map(w=>w.kg);
+  const min=Math.min(...vals)-0.5;const max=Math.max(...vals)+0.5;
+  const range=max-min||1;
+  const padL=10;const padR=10;const padT=14;const padB=20;
+  const gW=W-padL-padR;const gH=H-padT-padB;
+
+  // grid lines
+  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
+  for(let i=0;i<4;i++){
+    const y=padT+gH*(i/3);
+    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+gW,y);ctx.stroke();
+  }
+
+  // line
+  ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;ctx.lineJoin='round';ctx.beginPath();
+  vals.forEach((v,i)=>{
+    const x=padL+(i/(vals.length-1))*gW;
+    const y=padT+gH*(1-(v-min)/range);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // dots
+  vals.forEach((v,i)=>{
+    const x=padL+(i/(vals.length-1))*gW;
+    const y=padT+gH*(1-(v-min)/range);
+    ctx.fillStyle='#22d3ee';ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();
+  });
+
+  // labels
+  ctx.fillStyle='#9ca3af';ctx.font='10px sans-serif';ctx.textAlign='center';
+  const first=weights[0].date.slice(5);const last=weights[weights.length-1].date.slice(5);
+  ctx.fillText(first,padL,H-4);ctx.fillText(last,W-padR,H-4);
+
+  ctx.textAlign='right';
+  ctx.fillText(max.toFixed(1)+'kg',W-padR,padT+8);
+  ctx.fillText(min.toFixed(1)+'kg',W-padR,padT+gH);
+}
+
+/* ═══════════════════════════════════════
+   GOAL PROGRESS
+   ═══════════════════════════════════════ */
+function renderGoalProgress(t){
+  const weights=getWeights();
+  const el=document.getElementById('goalProgress');
+  if(!weights.length){el.innerHTML='<p style="color:var(--dim);font-size:13px">Log your weight to see progress.</p>';return}
+  const start=weights[0].kg;
+  const current=weights[weights.length-1].kg;
+  const goal=t.goal;
+  const totalToLose=start-goal;
+  const lost=start-current;
+  const pct=totalToLose>0?Math.min(Math.max(lost/totalToLose,0),1):0;
+
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--dim);margin-bottom:6px">
+      <span>Start: ${start}kg</span>
+      <span>Now: ${current}kg</span>
+      <span>Goal: ${goal}kg</span>
+    </div>
+    <div style="background:var(--card2);border-radius:10px;height:18px;overflow:hidden">
+      <div style="width:${pct*100}%;height:100%;background:var(--green);border-radius:10px;transition:width .5s"></div>
+    </div>
+    <p style="text-align:center;margin-top:8px;font-size:14px;font-weight:600;color:var(--green)">${lost.toFixed(1)}kg lost — ${Math.round(pct*100)}% to goal</p>
+    <p style="text-align:center;font-size:12px;color:var(--dim)">${Math.max(current-goal,0).toFixed(1)}kg remaining</p>
+  `;
+}
+
+/* ═══════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════ */
+function refreshAll(){
+  renderFoodList();renderExList();renderWeightHistory();
+  loadSettingsValues();refreshDashboard();
+}
+
+document.getElementById('todayDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+checkSetup();
+if(localStorage.getItem('cp_targets'))refreshAll();
+</script>
+
+</body>
+</html>
